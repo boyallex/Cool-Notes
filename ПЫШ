@@ -6,7 +6,7 @@ from PyQt5 import QtMultimedia
 
 
 class AudioPlayer(QWidget):
-    def __init__(self, audio:str, file_, parent = None):
+    def __init__(self, audio:str, file_, deleteAction = None, parent = None):
         QWidget.__init__(self, parent, flags =
                                    Qt.Window | Qt.MSWindowsFixedSizeDialogHint)
         # создание плеера
@@ -14,12 +14,21 @@ class AudioPlayer(QWidget):
         self.audioPlayer.setVolume(100)
         self.audioPlayer.mediaStatusChanged.connect(self.initPlayer)
         self.audioPlayer.stateChanged.connect(self.setPlayerState)
-        vbox = QHBoxLayout()
+        mainLayout = QVBoxLayout()
+        mediaHbox = QHBoxLayout()
+        toolLayout = QHBoxLayout()
+        # имя аудиозаписи
+        audioName = QLineEdit(audio)
+        toolLayout.addWidget(audioName)
+        # tools
+        toolButton = QToolButton()
+        toolButton.setText('...')
+        toolLayout.addWidget(toolButton)
         # кнопка Play
         self.btnPlay = QPushButton('Play')
         self.btnPlay.clicked.connect(self.audioPlayer.play)
         self.btnPlay.setEnabled(False)
-        vbox.addWidget(self.btnPlay)
+        mediaHbox.addWidget(self.btnPlay)
         # Timeline
         self.sldPosition = QSlider(Qt.Horizontal)
         self.sldPosition.setMinimum(0)
@@ -27,15 +36,13 @@ class AudioPlayer(QWidget):
         self.audioPlayer.positionChanged.connect(self.sldPosition.setValue)
         self.audioPlayer.setMedia(QtMultimedia.QMediaContent(file_))
         self.sldPosition.setEnabled(False)
-        vbox.addWidget(self.sldPosition)
+        mediaHbox.addWidget(self.sldPosition)
 
-        self.setLayout(vbox)
+        mainLayout.addLayout(toolLayout)
+        mainLayout.addLayout(mediaHbox)
+
+        self.setLayout(mainLayout)
         self.resize(300, 50)
-
-    def openFile(self): # ОТКРЫЕТИЕ ФАЙЛА
-         file = QFileDialog.getOpenFileUrl(parent=self,
-                                                     caption="Выберите файл")
-         self.audioPlayer.setMedia(QtMultimedia.QMediaContent(file[0]))
 
     def initPlayer(self, state): # КОНСТРУКТОР ПЛЕЕРА
         if state == QtMultimedia.QMediaPlayer.LoadedMedia: # состояние плеера при загрузке аудио
@@ -177,6 +184,11 @@ class Notes(QWidget):
 
         self.widgetFrame.setLayout(self.widgetLay)
 
+        # Menu
+        self.menuButton = MyPushButton("Menu")
+        self.mainLayout.addWidget(self.menuButton)
+        self.menuButton.leftClick.connect(self.show_left_menu)
+
         self.note_name_lbl = QLabel("MainNote")
         self.textLayout.addWidget(self.note_name_lbl)
 
@@ -197,11 +209,6 @@ class Notes(QWidget):
         # Кнопки
 
         self.buttonLayout = QHBoxLayout()
-
-        # Menu
-        self.menuButton = MyPushButton("Menu")
-        self.buttonLayout.addWidget(self.menuButton)
-        self.menuButton.leftClick.connect(self.show_left_menu)
 
         # Левое меню
         self.frame_menu = QFrame()
