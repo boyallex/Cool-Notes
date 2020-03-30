@@ -95,6 +95,17 @@ class MyPushButton(QPushButton):
         QPushButton.mousePressEvent(self, event)
 
 
+"""
+В двух фукнциях ты найдешь наш новый дизайн подзаметок,
+Там нужно вставить пару вещей и уточнить 
+Теперь все контекстное меню будет в toolButton, как и открытие подзаметки (то есть полное открытие)
+Хэштег, пока что, можно добавлять только через нее же (и то нельзя, ибо мои поправки для хэштегов не сработали,
+приспособь под свою систему
+
+Самый главный вопрос, так это стоит ли (и как именно?) помещать создание дизайна в отдельную функцию
+для лучшей читаемости кода?
+"""
+
 class Notes(QWidget):
     def __init__(self):
         super(Notes, self).__init__()
@@ -236,13 +247,10 @@ class Notes(QWidget):
 
         addImage = QAction('Image', self)
         addImage.triggered.connect(lambda: self.add_img())
-        addTable = QAction('Table', self)
-        addTable.triggered.connect(lambda: self.add_table())
         addAudio = QAction('Audio', self)
         addAudio.triggered.connect(lambda: self.add_audio())
 
         contextMenuForButton.addAction(addImage)
-        contextMenuForButton.addAction(addTable)
         contextMenuForButton.addAction(addAudio)
         contextMenuForButton.addSeparator()
 
@@ -294,7 +302,7 @@ class Notes(QWidget):
 
         mainGroupBox = QGroupBox()
         mainGroupBox.setGeometry(QRect(300, 160, 261, 251))
-        mainGroupBox.setMaximumSize(QSize(300, 300))
+        mainGroupBox.setMaximumSize(QSize(300, 200))
 
         mainGroupBox.setStyleSheet("border-radius: 10px;\n"
                                    "background-color: rgb(83,90,87);\n"
@@ -306,6 +314,7 @@ class Notes(QWidget):
         topGroupBox.setStyleSheet("background-color: rgb(0, 0, 0);\n"
                                   "font: 87 9pt \"Arial Black\";\n"
                                   "color: white;")
+        topGroupBox.setMaximumSize(QSize(300, 200))
 
         topLayout = QHBoxLayout(topGroupBox)
         labelName = QLabel(topGroupBox)
@@ -326,34 +335,16 @@ class Notes(QWidget):
         toolButton.setAutoRaise(False)
 
         toolMenu = QMenu(toolButton)
-
-        removeAction = QWidgetAction(toolButton)
-        removeAction.setText("Remove")
-        removeAction.triggered.connect(
-            lambda: self.note_del(index=index, note_layout=memoLayout, note_hashtag=hashtag,
-                                  sys_name=sys_name, user_name=user_name))
-        toolMenu.addAction(removeAction)
-
-
-        renameAction = QWidgetAction(toolButton)
-        renameAction.setText("Rename")
-        renameAction.triggered.connect(
-            lambda: self.rename_note(sys_name, hashtag, index, user_name))
-        toolMenu.addAction(renameAction)
-
-        openAction =  QWidgetAction(toolButton)
-        openAction.setText("Open")
-        openAction.triggered.connect(lambda: self.change_open_note(sys_name=sys_name, index=index))
-        toolMenu.addAction(openAction)
-
         toolButton.setMenu(toolMenu)
+
+        self.active_note_menu(toolMenu, toolButton, index, memoLayout, hashtag, sys_name, user_name)
 
         topLayout.addWidget(toolButton)
         mainLayout.addWidget(topGroupBox)
 
         noteTextEdit = QTextEdit(mainGroupBox)
-        noteTextEdit.setMinimumSize(QSize(200, 150))
-        noteTextEdit.setMaximumSize(QSize(300, 400))
+        noteTextEdit.setMinimumSize(QSize(100, 150))
+        noteTextEdit.setMaximumSize(QSize(250, 200))
         noteTextEdit.setStyleSheet(
             "background-color: rgb(230,216,203); border-style: outset; font:12pt 'sans-serif'; color: black;")
 
@@ -364,6 +355,14 @@ class Notes(QWidget):
             "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:7.8pt; font-weight:400; font-style:normal;\">\n"
             "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Note\'s name...</p></body></html>")
 
+        noteTextEdit.setReadOnly(True)
+        noteTextEdit.viewport().setCursor(Qt.ArrowCursor)
+        noteText = self.open_text(index)
+        if len(noteText) > 44:
+            noteTextEdit.setText(noteText[:44] + "...")
+        else:
+            noteTextEdit.setText(noteText[:44])
+
         mainLayout.addWidget(noteTextEdit)
 
         memoLayout.addLayout(mainLayout)
@@ -371,15 +370,35 @@ class Notes(QWidget):
         self.noteLayout.addLayout(memoLayout)
 
         self.notes_dict_list[index]["note_layout"] = memoLayout
-
-
-        # note_layout.leftClick.connect(lambda: self.show_note_text(sys_name, index))
-        # note_layout.rightClick.connect(lambda: self.context_menu(note_layout, hashtag, index, sys_name, user_name))
-        # note_layout.leftClick.connect(lambda: self.change_open_note(sys_name, index))
-        # note_layout.leftClick.connect(lambda: self.note_name_lbl_func(user_name))
-        # note_layout.destroyed.connect(lambda: self.del_print(user_name))
+        self.notes_dict_list[index]["note_menu"] = toolMenu
+        self.notes_dict_list[index]["note_tool_btn"] = toolButton
+        self.notes_dict_list[index]["note_textedit"] = noteTextEdit
+        self.notes_dict_list[index]["note_label_name"] = labelName
+        self.notes_dict_list[index]["note_label_hashtag"] = labelHashtag
 
         print(self.notes_dict_list)
+
+    def active_note_menu(self, menu, tool_btn, index, note_layout, hashtag, sys_name, user_name):
+        """Очищает и заново запускает меню для заметки"""
+        menu.clear()
+
+        removeAction = QWidgetAction(tool_btn)
+        removeAction.setText("Remove")
+        removeAction.triggered.connect(
+            lambda: self.note_del(index=index, note_layout=note_layout, note_hashtag=hashtag,
+                                  sys_name=sys_name, user_name=user_name))
+        menu.addAction(removeAction)
+
+        renameAction = QWidgetAction(tool_btn)
+        renameAction.setText("Rename")
+        renameAction.triggered.connect(
+            lambda: self.rename_note(sys_name, hashtag, index, user_name))
+        menu.addAction(renameAction)
+
+        openAction = QWidgetAction(tool_btn)
+        openAction.setText("Open")
+        openAction.triggered.connect(lambda: self.change_open_note(sys_name=sys_name, index=index))
+        menu.addAction(openAction)
 
     @pyqtSlot(str)
     def show_note_text(self):  # СОЗДАЕТ ТЕСТОВОЕ ПОЛЕ QTEXTDOCUMENT И АКТИВИРУЕТ СОХРАНЕНИЕ
@@ -391,8 +410,16 @@ class Notes(QWidget):
         self.note_name_lbl.setText(self.notes_dict_list[self.open_note_index]["user_name"])
         note_doc.contentsChanged.connect(lambda: self.save_note_text())
 
+    def change_note_textedit(self, index):
+        """Меняет текст на виджете подзаметки"""
+        noteText = self.open_text(index)
+        if len(noteText) > 44:
+            self.notes_dict_list[index]["note_textedit"].setText(noteText[:44] + "...")
+        else:
+            self.notes_dict_list[index]["note_textedit"].setText(noteText[:44])
+
     @pyqtSlot(str)
-    def change_open_note(self, sys_name, index): # МЕНЯЕТ АКТИВНУЮ ЗАМЕТКУ
+    def change_open_note(self, sys_name, index):  # МЕНЯЕТ АКТИВНУЮ ЗАМЕТКУ
         self.open_note_sys_name = str(sys_name)
         self.open_note_index = index
 
@@ -402,7 +429,9 @@ class Notes(QWidget):
             self.clear_layout(self.widgetLay)
             self.show_note_text()
         self.create_all_img_button()
+        self.create_all_audio_player()
         self.change_buttons()
+
 
     def change_buttons(self):
         if self.open_note_index == -1:
@@ -424,12 +453,18 @@ class Notes(QWidget):
         text = self.mainTextEdit.toPlainText()
         self.notes_dict_list[index]["text"] = text
         self.notes_dict_list[index]["date"] = self.note_date_func()
-        notes_dict_copy = self.notes_dict_list[index].copy()
-        del notes_dict_copy["note_layout"]
-        if "images_btn" in notes_dict_copy.keys():
-            del notes_dict_copy["images_btn"]
+        note_dict_copy = self.notes_dict_list[index].copy()
+        del note_dict_copy["note_layout"]
+        del note_dict_copy["note_menu"]
+        del note_dict_copy["note_tool_btn"]
+        del note_dict_copy["note_textedit"]
+        del note_dict_copy["note_label_name"]
+        del note_dict_copy["note_label_hashtag"]
+        if "images_btn" in note_dict_copy.keys():
+            del note_dict_copy["images_btn"]
         with open(self.path + "\\" + note_sys_name + ".json", 'w') as f:
-            json.dump(notes_dict_copy, f)
+            json.dump(note_dict_copy, f)
+        self.change_note_textedit(index)
 
     def save_main_note_text(self):
         text = self.mainTextEdit.toPlainText()
@@ -445,7 +480,7 @@ class Notes(QWidget):
         else:
             return self.main_dict["text"]
 
-    #todo-------------------------Fuctions for self.plusButton-------------------------
+    #todo-------------------------Fuctions for plusButton-------------------------
     def max_note_name_number(self): # ВОЗВРАЩАЕТ МАКИСМАЛЬНЫЙ НОМЕР NONAME ЗАМЕТОК
         a = []
         for note in self.notes_dict_list:
@@ -456,9 +491,9 @@ class Notes(QWidget):
         else:
             return 0
 
-    def input_note_name(self): # ввод названия заметки
+    def input_note_name(self, text): # ввод названия заметки
         name, ok = QInputDialog.getText(self, "Naming", "Enter name",
-                                        text="NoName" + str(self.max_note_name_number() + 1))
+                                        text=text)
         note_user_name = None
         if ok and name != "":
             note_user_name = str(name)
@@ -485,7 +520,7 @@ class Notes(QWidget):
 
     @pyqtSlot()
     def new_note(self):  # СОЗДАНИЕ НОВОЙ КНОПКИ ЗАМЕТКИ
-        new_note_user_name = self.input_note_name()
+        new_note_user_name = self.input_note_name("NoName" + str(self.max_note_name_number() + 1))
 
         if new_note_user_name == None:
             return
@@ -504,7 +539,7 @@ class Notes(QWidget):
 
         mainGroupBox = QGroupBox()
         mainGroupBox.setGeometry(QRect(300, 160, 261, 251))
-        mainGroupBox.setMaximumSize(QSize(300, 300))
+        mainGroupBox.setMaximumSize(QSize(300, 200))
 
         mainGroupBox.setStyleSheet("border-radius: 10px;\n"
                                    "background-color: rgb(83,90,87);\n"
@@ -516,6 +551,7 @@ class Notes(QWidget):
         topGroupBox.setStyleSheet("background-color: rgb(0, 0, 0);\n"
                                   "font: 87 9pt \"Arial Black\";\n"
                                   "color: white;")
+        topGroupBox.setMaximumSize(QSize(300, 200))
 
         topLayout = QHBoxLayout(topGroupBox)
         labelName = QLabel(topGroupBox)
@@ -536,33 +572,16 @@ class Notes(QWidget):
         toolButton.setAutoRaise(False)
 
         toolMenu = QMenu(toolButton)
-
-        removeAction = QWidgetAction(toolButton)
-        removeAction.setText("Remove")
-        removeAction.triggered.connect(
-            lambda: self.note_del(index=index, note_layout=memoLayout, note_hashtag=new_note_hashtag,
-                                  sys_name=new_sys_name, user_name=new_note_user_name))
-        toolMenu.addAction(removeAction)
-
-        renameAction = QWidgetAction(toolButton)
-        renameAction.setText("Rename")
-        renameAction.triggered.connect(
-            lambda: self.rename_note(new_sys_name, new_note_hashtag, index, new_note_user_name))
-        toolMenu.addAction(renameAction)
-
-        openAction = QWidgetAction(toolButton)
-        openAction.setText("Open")
-        openAction.triggered.connect(lambda: self.change_open_note(sys_name=new_sys_name, index=index))
-        toolMenu.addAction(openAction)
-
         toolButton.setMenu(toolMenu)
+
+        self.active_note_menu(toolMenu, toolButton, index, memoLayout, new_note_hashtag, new_sys_name, new_note_user_name)
 
         topLayout.addWidget(toolButton)
         mainLayout.addWidget(topGroupBox)
 
         noteTextEdit = QTextEdit(mainGroupBox)
-        noteTextEdit.setMinimumSize(QSize(200, 150))
-        noteTextEdit.setMaximumSize(QSize(300, 400))
+        noteTextEdit.setMinimumSize(QSize(100, 150))
+        noteTextEdit.setMaximumSize(QSize(250, 200))
         noteTextEdit.setStyleSheet(
             "background-color: rgb(230,216,203); border-style: outset; font:12pt 'sans-serif'; color: black;")
 
@@ -573,6 +592,10 @@ class Notes(QWidget):
             "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:7.8pt; font-weight:400; font-style:normal;\">\n"
             "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Note\'s name...</p></body></html>")
 
+        noteTextEdit.setReadOnly(True)
+        noteTextEdit.viewport().setCursor(Qt.ArrowCursor)
+        noteText = ""
+        noteTextEdit.setText(noteText[:24])
         mainLayout.addWidget(noteTextEdit)
 
         memoLayout.addLayout(mainLayout)
@@ -602,15 +625,15 @@ class Notes(QWidget):
                          "index": index,
                          "date": self.note_date_func(),
                          "hashtag": new_note_hashtag,
-                         "note_layout": memoLayout}
+                         "note_layout": memoLayout,
+                         "note_menu": toolMenu,
+                         "note_tool_btn": toolButton,
+                         "note_textedit": noteTextEdit,
+                         "note_label_name": labelName,
+                         "note_label_hashtag": labelHashtag}
 
         self.notes_dict_list.append(new_note_dict)
 
-        # подключаем все функции к кнопке
-        # new_note_layout.leftClick.connect(lambda: self.show_note_text(new_sys_name, index))
-        #new_note_layout.rightClick.connect(lambda: self.context_menu(new_note_layout, new_note_hashtag, index, new_sys_name, new_note_user_name))
-        # new_note_layout.clicked.connect(self.show_note_img)
-        # new_note_layout.destroyed.connect(lambda: self.del_print(new_note_user_name))
 
         # сохраняем словарь в json файл
         text = '{{"user_name": "{}", "sys_name": "{}", "text": "", "index": {}, "date": "{}", "hashtag": "{}"}}'.format(
@@ -619,71 +642,47 @@ class Notes(QWidget):
         with open(self.path + r'\{}'.format(new_sys_name) + '.json', 'w+') as f:
             f.write(text)
 
-        # добаляем виджет поздаметки
-
-        # self.noteLayout.addWidget(mainGroupBox)
-        # self.noteLayout.addLayout(verticalLayout)
-
         # открываем и активируем заметку
         self.change_open_note(new_sys_name, index)
-        # self.show_note_text()
-        # self.note_name_lbl_func(new_note_user_name)
-
 
         print(self.notes_dict_list)
 
     #todo-------------------------Functions for context menu-------------------------
     @pyqtSlot("QPushButton", str)
-    def context_menu(self, note_layout, note_hashtag, index, sys_name, user_name): # СОЗДАЕТ КОНТЕКСТНОЕ МЕНЮ
-        print("context menu:", note_layout, note_hashtag, index, sys_name, user_name)
-        self.menu = QMenu()
 
-        removeAct = QAction('Delete', self)
-        removeAct.triggered.connect(lambda: self.note_del(index=index, note_layout=note_layout, note_hashtag=note_hashtag, sys_name=sys_name,
-                                                          user_name=user_name))
-        renameAct = QAction('Rename', self)
-        renameAct.triggered.connect(lambda: self.rename_note(sys_name, note_hashtag, index, user_name))
-
-        self.menu.addAction(removeAct)
-        self.menu.addAction(renameAct)
-        self.menu.addSeparator() # вообще не знаю че это даже не смотри
-
-        note_layout.customContextMenuRequested.connect(lambda: self.show_context_menu())
-
-    @pyqtSlot()
-    def show_context_menu(self): # ОТОБРАЖАЕТ КОНТЕКСТНОЕ МЕНЮ
-        # Показываем меню и выбираем ему место
-        self.menu.exec_(QCursor.pos())
 
     @pyqtSlot(str, "QPushButton", int)
     def rename_note(self, sys_name, note_hashtag, index, user_name): # ПЕРЕИМЕНОВАНИЕ ЗАМЕТКИ
         # пользователь вводит новое название заметки
-        text, ok = QInputDialog.getText(self, "Naming", "Enter name", text=user_name)
-
-        if ok and text != "":
-            note_name = str(text)
-        else:
-            return None
+        new_user_name = self.input_note_name(text = user_name)
+        if new_user_name == None:
+            return
 
         # переименовываем заметки в левом меню
         for i in range(len(self.hash_dict[note_hashtag])):
             if self.hash_dict[note_hashtag][i]["user_name"] == self.notes_dict_list[index]["user_name"]:
-                self.hash_dict[note_hashtag][i]["user_name"] = note_name
+                self.hash_dict[note_hashtag][i]["user_name"] = new_user_name
         self.tree.clear()
         self.cycle_for_items()
 
+        self.notes_dict_list[index]["note_label_name"].setText(new_user_name)
         # меняем название в словаре
-        self.notes_dict_list[index]["user_name"] = note_name
-        d = self.notes_dict_list[index].copy()
-        del d["note_layout"]
-        if "images_btn" in d.keys():
-            del d["images_btn"]
+        self.notes_dict_list[index]["user_name"] = new_user_name
+        note_dict_copy = self.notes_dict_list[index].copy()
+        del note_dict_copy["note_layout"]
+        del note_dict_copy["note_menu"]
+        del note_dict_copy["note_tool_btn"]
+        del note_dict_copy["note_textedit"]
+        del note_dict_copy["note_label_name"]
+        del note_dict_copy["note_label_hashtag"]
+        if "images_btn" in note_dict_copy.keys():
+            del note_dict_copy["images_btn"]
         # меняем название в json файле
         with open(self.path + "\\" + sys_name + ".json", 'w') as f:
-            json.dump(d, f)
+            json.dump(note_dict_copy, f)
 
-        self.note_name_lbl_func(sys_name)  # устанавливаем название на label сверху
-        self.show_note_text(sys_name, index)  # открываем заметку
+        # self.note_name_lbl.setText(note_name)
+        # self.show_note_text(sys_name, index)  # открываем заметку
         self.notes_dict_list[index]["date"] = self.note_date_func()  # устанавливаем время изменения заметки
 
     @pyqtSlot("QPushButton", int, str)
@@ -709,7 +708,6 @@ class Notes(QWidget):
         self.clear_layout(note_layout)
         note_layout.deleteLater()
 
-
         os.remove(self.path + r"\{}".format(sys_name) + ".json")
 
         # открываем главную заметку
@@ -725,10 +723,17 @@ class Notes(QWidget):
         for note_dict in self.notes_dict_list[index:]:
             note_dict["index"] = note_dict["index"] - 1
             note_dict["sys_name"] = note_dict["sys_name"][:4] + str(note_dict["index"]+ 1)
-            d = note_dict.copy()
-            del d["note_layout"]
+            note_dict_copy = note_dict.copy()
+            del note_dict_copy["note_layout"]
+            del note_dict_copy["note_menu"]
+            del note_dict_copy["note_tool_btn"]
+            del note_dict_copy["note_textedit"]
+            del note_dict_copy["note_label_name"]
+            del note_dict_copy["note_label_hashtag"]
+            if "images_btn" in note_dict_copy.keys():
+                del note_dict_copy["images_btn"]
             with open(self.path + r"\{}".format(sys_name) + ".json", 'w+') as f:
-                json.dump(d, f)
+                json.dump(note_dict_copy, f)
 
         self.after_delete_cycle_for_notes(index)
 
@@ -750,12 +755,16 @@ class Notes(QWidget):
 
     def after_delete_cycle_for_notes(self, index):
         """Проходится циклом по всем заметкам начиная с индекса удаленной заметки и
-        заново запускает их. Это нужно для того, чтобы не было херни с индексами и последующим
+        заново запускает каждое меню заметки. Это нужно для того, чтобы не было херни с индексами и последующим
         удалением заметок"""
         for note in self.notes_dict_list[index:]:
-            self.clear_layout(note["note_layout"])
-            note["note_layout"].deleteLater()
-            self.show_note_box(note["sys_name"], note["index"], note["user_name"], note["hashtag"])
+            self.active_note_menu(menu = note["note_menu"],
+                                  tool_btn = note["note_tool_btn"],
+                                  index = note["index"],
+                                  note_layout = note["note_layout"],
+                                  hashtag = note["hashtag"],
+                                  sys_name = note["sys_name"],
+                                  user_name = note["user_name"])
 
     #todo-------------------------Functions for tree menu-------------------------
     def cycle_for_items(self): # ЗАНОВО СОЗДАЕТ ЗАМЕТКИ В ЛЕВОМ МЕНЮ ПО КАТЕГОРИЯМ
@@ -843,14 +852,15 @@ class Notes(QWidget):
         if errorMessage:
             errorMessage.exec_()
             return
-        img_button = QPushButton()
-        img_button.clicked.connect(lambda: self.openImage(fileName))
+        img_button = MyPushButton("")
+        img_button.leftClick.connect(lambda: self.openImage(fileName))
         img_button.setGeometry(QRect(100, 100, 100, 100))
         img_button.setIcon(QIcon(fileName))
         img_button.setIconSize(QSize(img_button.width(), img_button.height()))
+        img_button.rightClick.connect(lambda: self.img_context_menu(img_button, self.open_note_index, fileName))
+
         self.widgetLay.addWidget(img_button)
-        # self.open_img_btn.setIcon(QIcon(fileName))
-        # self.open_img_btn.setIconSize(QSize(self.open_img_btn.width(), self.open_img_btn.height()))
+
         if not "images" in self.notes_dict_list[self.open_note_index].keys():
             self.notes_dict_list[self.open_note_index]["images"] = []
         self.notes_dict_list[self.open_note_index]["images"].append(fileName)
@@ -859,10 +869,37 @@ class Notes(QWidget):
         self.notes_dict_list[self.open_note_index]["images_btn"].append(img_button)
         note_dict_copy = self.notes_dict_list[self.open_note_index].copy()
         del note_dict_copy["note_layout"]
+        del note_dict_copy["note_menu"]
+        del note_dict_copy["note_tool_btn"]
+        del note_dict_copy["note_textedit"]
+        del note_dict_copy["note_label_name"]
+        del note_dict_copy["note_label_hashtag"]
         if "images_btn" in note_dict_copy.keys():
             del note_dict_copy["images_btn"]
         with open(self.path + "\\" + self.open_note_sys_name + ".json", "w") as f:
             json.dump(note_dict_copy, f)
+
+    def img_context_menu(self, img_button, index, img_path): # СОЗДАЕТ КОНТЕКСТНОЕ МЕНЮ
+        img_menu = QMenu()
+
+        removeAct = QAction('Delete')
+        removeAct.triggered.connect(lambda: self.image_delete(index, img_button, img_path))
+        img_menu.addAction(removeAct)
+
+        img_button.customContextMenuRequested.connect(lambda: self.show_context_menu(img_menu))
+
+    @pyqtSlot()
+    def show_context_menu(self, menu): # ОТОБРАЖАЕТ КОНТЕКСТНОЕ МЕНЮ
+        # Показываем меню и выбираем ему место
+        menu.exec_(QCursor.pos())
+
+    def image_delete(self, index, img_button, img_path):
+        i = 0
+        while img_path != self.notes_dict_list[index]["images"][i]:
+            i += 1
+        del self.notes_dict_list[index]["images"][i]
+        img_button.setParent(None)
+        img_button.deleteLater()
 
     def openImage(self, fileName_):
         from ctypes import windll
@@ -890,12 +927,68 @@ class Notes(QWidget):
     def create_all_img_button(self):
         if (self.open_note_index != -1) and ("images" in self.notes_dict_list[self.open_note_index].keys()):
             for img in self.notes_dict_list[self.open_note_index]["images"]:
-                img_button = QPushButton()
+                img_button = MyPushButton("")
                 img_button.setGeometry(QRect(100, 100, 100, 100))
                 img_button.setIcon(QIcon(img))
                 img_button.setIconSize(QSize(img_button.width(), img_button.height()))
                 img_button.clicked.connect(lambda: self.openImage(img))
+                img_button.rightClick.connect(lambda: self.img_context_menu(img_button, self.open_note_index, img))
                 self.widgetLay.addWidget(img_button)
+
+
+    #todo-------------------------Functions for audio-------------------------
+
+    def check_for_added_audio(self, audio_path):
+        if ("audio" in self.notes_dict_list[self.open_note_index].keys()):
+            for audio_dict in self.notes_dict_list[self.open_note_index]["audio"]:
+                if audio_path == audio_dict["audio_path"]:
+                    errorMessage = QMessageBox()
+                    errorMessage.setIcon(QMessageBox.Critical)
+                    errorMessage.setText("This audio has already been added to the {}.".format(self.notes_dict_list[self.open_note_index]["user_name"]))
+                    errorMessage.setWindowTitle("Error")
+                    return errorMessage
+        else:
+            return None
+
+    def create_all_audio_player(self):
+        if (self.open_note_index != -1) and ("audio" in self.notes_dict_list[self.open_note_index].keys()):
+            for audio_dict in self.notes_dict_list[self.open_note_index]["audio"]:
+                url = QUrl(audio_dict["audio_path"])
+                playWidget = AudioPlayer(audio_dict["audio_name"], url)
+                self.widgetLay.addWidget(playWidget)
+
+    def add_audio(self):
+        file = QFileDialog.getOpenFileName(parent=self,
+                                           caption="Выберите файл")
+
+        if not file[0]:
+            return None
+        errorMessage = self.check_for_added_audio(file[0])
+        if errorMessage:
+            errorMessage.exec_()
+            return
+
+        url = QUrl(file[0])
+        last_slash_index = file[0].rfind("/")
+        audio_name = file[0][last_slash_index+1:]
+        if file[0] != '':
+            if "audio" not in self.notes_dict_list[self.open_note_index].keys():
+                self.notes_dict_list[self.open_note_index]["audio"] = []
+            self.notes_dict_list[self.open_note_index]["audio"].append({"audio_name": audio_name, "audio_path": file[0]})
+            self.notes_dict_list[self.open_note_index]["date"] = self.note_date_func()
+            note_dict_copy = self.notes_dict_list[self.open_note_index].copy()
+            del note_dict_copy["note_layout"]
+            del note_dict_copy["note_menu"]
+            del note_dict_copy["note_tool_btn"]
+            del note_dict_copy["note_textedit"]
+            del note_dict_copy["note_label_name"]
+            del note_dict_copy["note_label_hashtag"]
+            if "images_btn" in note_dict_copy.keys():
+                del note_dict_copy["images_btn"]
+            with open(self.path + "\\" + self.open_note_sys_name + ".json", 'w') as f:
+                json.dump(note_dict_copy, f)
+            playWidget = AudioPlayer(audio_name, url)
+            self.widgetLay.addWidget(playWidget)
 
 
     #todo-------------------------Other functions-------------------------
@@ -919,23 +1012,6 @@ class Notes(QWidget):
 
         textW.toHTML("<h1><font></font></h1>")
 
-    def add_audio(self):
-        file = QFileDialog.getOpenFileName(parent=self,
-                                           caption="Выберите файл")
-        url = QUrl(file[0])
-        if file[0] != '':
-            if "audio" not in self.notes_dict_list[self.open_note_index].keys():
-                self.notes_dict_list[self.open_note_index]["audio"] = []
-            self.notes_dict_list[self.open_note_index]["audio"].append({"audio_name": "", "audio_path": file[0]})
-            self.notes_dict_list[self.open_note_index]["date"] = self.note_date_func()
-            d = self.notes_dict_list[self.open_note_index].copy()
-            del d["note_layout"]
-            if "images_btn" in d.keys():
-                del d["images_btn"]
-            with open(self.path + "\\" + self.open_note_sys_name + ".json", 'w') as f:
-                json.dump(d, f)
-            playWidget = AudioPlayer(file[0], url)
-            self.widgetLay.addWidget(playWidget)
 
     # def save_all_json(self): # ТЕСТОВАЯ ФУНКЦИЯ СОХРАНЕНИЯ JSON ПРИ ЗАКРЫТИИ ПРИЛОЖЕНИЯ
     #     for dict in self.notes_dict_list:
