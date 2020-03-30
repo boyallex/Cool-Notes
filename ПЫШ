@@ -95,17 +95,6 @@ class MyPushButton(QPushButton):
         QPushButton.mousePressEvent(self, event)
 
 
-"""
-В двух фукнциях ты найдешь наш новый дизайн подзаметок,
-Там нужно вставить пару вещей и уточнить 
-Теперь все контекстное меню будет в toolButton, как и открытие подзаметки (то есть полное открытие)
-Хэштег, пока что, можно добавлять только через нее же (и то нельзя, ибо мои поправки для хэштегов не сработали,
-приспособь под свою систему
-
-Самый главный вопрос, так это стоит ли (и как именно?) помещать создание дизайна в отдельную функцию
-для лучшей читаемости кода?
-"""
-
 class Notes(QWidget):
     def __init__(self):
         super(Notes, self).__init__()
@@ -853,11 +842,12 @@ class Notes(QWidget):
             errorMessage.exec_()
             return
         img_button = MyPushButton("")
+        img_button.rightClick.connect(lambda: self.img_context_menu(img_button, self.open_note_index, fileName))
         img_button.leftClick.connect(lambda: self.openImage(fileName))
         img_button.setGeometry(QRect(100, 100, 100, 100))
         img_button.setIcon(QIcon(fileName))
         img_button.setIconSize(QSize(img_button.width(), img_button.height()))
-        img_button.rightClick.connect(lambda: self.img_context_menu(img_button, self.open_note_index, fileName))
+
 
         self.widgetLay.addWidget(img_button)
 
@@ -880,9 +870,11 @@ class Notes(QWidget):
             json.dump(note_dict_copy, f)
 
     def img_context_menu(self, img_button, index, img_path): # СОЗДАЕТ КОНТЕКСТНОЕ МЕНЮ
+        img_button.setContextMenuPolicy(Qt.CustomContextMenu)
         img_menu = QMenu()
 
-        removeAct = QAction('Delete')
+        removeAct = QWidgetAction(img_button)
+        removeAct.setText("Delete")
         removeAct.triggered.connect(lambda: self.image_delete(index, img_button, img_path))
         img_menu.addAction(removeAct)
 
@@ -892,6 +884,7 @@ class Notes(QWidget):
     def show_context_menu(self, menu): # ОТОБРАЖАЕТ КОНТЕКСТНОЕ МЕНЮ
         # Показываем меню и выбираем ему место
         menu.exec_(QCursor.pos())
+
 
     def image_delete(self, index, img_button, img_path):
         i = 0
@@ -903,7 +896,6 @@ class Notes(QWidget):
 
     def openImage(self, fileName_):
         from ctypes import windll
-        print(fileName_)
         self.openImgFrame = QFrame()
         self.openImgFrame.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         screenSize1 = windll.user32.GetSystemMetrics(0)
@@ -931,8 +923,8 @@ class Notes(QWidget):
                 img_button.setGeometry(QRect(100, 100, 100, 100))
                 img_button.setIcon(QIcon(img))
                 img_button.setIconSize(QSize(img_button.width(), img_button.height()))
-                img_button.clicked.connect(lambda: self.openImage(img))
                 img_button.rightClick.connect(lambda: self.img_context_menu(img_button, self.open_note_index, img))
+                img_button.leftClick.connect(lambda: self.openImage(img))
                 self.widgetLay.addWidget(img_button)
 
 
