@@ -1,3 +1,4 @@
+
 import sys, os, json
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -6,7 +7,7 @@ from PyQt5 import QtMultimedia
 
 
 class AudioPlayer(QWidget):
-    def __init__(self, audio: str, file_, deleteAction=None, parent=None):
+    def __init__(self, audio: str, file_, parent=None):
         QWidget.__init__(self, parent, flags=
         Qt.Window | Qt.MSWindowsFixedSizeDialogHint)
         # создание плеера
@@ -14,6 +15,7 @@ class AudioPlayer(QWidget):
         self.audioPlayer.setVolume(100)
         self.audioPlayer.mediaStatusChanged.connect(self.initPlayer)
         self.audioPlayer.stateChanged.connect(self.setPlayerState)
+
         mainLayout = QVBoxLayout()
         mediaHbox = QHBoxLayout()
         toolLayout = QHBoxLayout()
@@ -21,9 +23,15 @@ class AudioPlayer(QWidget):
         audioName = QLineEdit(audio)
         toolLayout.addWidget(audioName)
         # tools
-        toolButton = QToolButton()
+        toolButton = QToolButton(popupMode=QToolButton.InstantPopup)
         toolButton.setText('...')
         toolLayout.addWidget(toolButton)
+        toolMenu = QMenu()
+        removeAct = QWidgetAction(toolButton)
+        removeAct.setText('Delete')
+        removeAct.triggered.connect(self.deleteLater)
+        toolMenu.addAction(removeAct)
+        toolButton.setMenu(toolMenu)
         # кнопка Play
         self.btnPlay = QPushButton('Play')
         self.btnPlay.clicked.connect(self.audioPlayer.play)
@@ -42,6 +50,7 @@ class AudioPlayer(QWidget):
         mainLayout.addLayout(mediaHbox)
 
         self.setLayout(mainLayout)
+        self.setMaximumHeight(65)
         self.resize(300, 50)
 
     def initPlayer(self, state):  # КОНСТРУКТОР ПЛЕЕРА
@@ -74,7 +83,6 @@ class AudioPlayer(QWidget):
             self.btnPlay.setText('Play')
             self.btnPlay.clicked.connect(self.audioPlayer.play)
 
-
 class MyPushButton(QPushButton):
     """
     Переписанный класс QPushButton
@@ -93,7 +101,6 @@ class MyPushButton(QPushButton):
             self.leftClick.emit()
 
         QPushButton.mousePressEvent(self, event)
-
 
 class Notes(QWidget):
     def __init__(self):
@@ -128,21 +135,67 @@ class Notes(QWidget):
         self.setWindowTitle('Note')
         self.setGeometry(300, 200, 650, 450)
 
-        # Нулевой слой
+        #Нулевой слой
         self.ZLay = QVBoxLayout()
         self.setLayout(self.ZLay)
-
-        # Первый слой
-        self.mainLayout = QHBoxLayout()
-        self.ZLay.addLayout(self.mainLayout)
+        # Шапка с основной информацией
+        hatBox = QGroupBox()
+        hatBox.setStyleSheet("color: rgb(255, 255, 255);\n"
+        "background-color: rgb(0, 0, 0);\n"
+        "border-radius: 10px;")
+        self.hatLayout = QHBoxLayout()#hatBox)
+        hatBox.setLayout(self.hatLayout)
 
         # Menu
-        self.menuButton = MyPushButton("Menu")
-        self.mainLayout.addWidget(self.menuButton)
+        self.menuButton = MyPushButton("")
+        self.menuButton.setStyleSheet('border-image: url("MenuButton.png")')
+        self.menuButton.setMaximumHeight(30)
+        self.menuButton.setMaximumWidth(30)
         self.menuButton.leftClick.connect(self.show_left_menu)
+        self.hatLayout.addWidget(self.menuButton)
+
+        # Активная заметка
+        self.note_name_lbl = QLabel("MainNote")
+        self.hatLayout.addWidget(self.note_name_lbl)
+
+        # Ее последнее изменение
+        self.date_lbl = QLabel("Last Edit: " + self.main_dict["date"])
+        self.hatLayout.addWidget(self.date_lbl)
+
+        # Меню для кнопки-скрепки
+        contextMenuForButton = QMenu()
+
+        addImage = QAction('Image', self)
+        addImage.triggered.connect(lambda: self.add_img())
+        addAudio = QAction('Audio', self)
+        addAudio.triggered.connect(lambda: self.add_audio())
+
+        contextMenuForButton.addAction(addImage)
+        contextMenuForButton.addAction(addAudio)
+        contextMenuForButton.addSeparator()
+
+        contextMenuForButton.customContextMenuRequested.connect(lambda: self.show_context_menu())
+
+        # Screpka
+        self.clipButton = MyPushButton('')
+        self.clipButton.setMenu(contextMenuForButton)
+        self.clipButton.setMaximumWidth(20)
+        self.hatLayout.addWidget(self.clipButton)
+
+        self.ZLay.addWidget(hatBox)
+        # Первый слой
+        self.scrollArea = QScrollArea()
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollAreaWidgetContents = QWidget()
+        self.scrollAreaWidgetContents.setStyleSheet('border-radius:100px')
+        self.mainLayout = QHBoxLayout()
+        self.scrollAreaWidgetContents.setLayout(self.mainLayout)
+        self.scrollArea.setWidget(self.scrollAreaWidgetContents)
+        self.ZLay.addWidget(self.scrollArea)
 
         self.textFrame = QFrame()
         self.widgetFrame = QFrame()
+
         self.textFrame.setStyleSheet('border-radius:10px;')
 
         self.mainLayout.addWidget(self.textFrame)
@@ -161,13 +214,6 @@ class Notes(QWidget):
         self.noteFrame.setLayout(self.noteLayout)
         self.mainLayout.addWidget(self.noteFrame)
 
-
-        self.note_name_lbl = QLabel("MainNote")
-        self.textLayout.addWidget(self.note_name_lbl)
-
-        self.date_lbl = QLabel("Last Edit: " + self.main_dict["date"])
-        self.textLayout.addWidget(self.date_lbl)
-
         self.mainTextEdit = QTextEdit()
         self.mainTextEdit.setFrameStyle(14)
         self.textLayout.addWidget(self.mainTextEdit)
@@ -183,6 +229,12 @@ class Notes(QWidget):
         self.frame_menu = QFrame()
         self.frame_menu.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         self.left_menu = QVBoxLayout()
+        closeMenuBtn = QPushButton()
+        closeMenuBtn.setStyleSheet('border-image: url("Cross.png")')
+        closeMenuBtn.setMaximumHeight(15)
+        closeMenuBtn.setMaximumWidth(15)
+        closeMenuBtn.clicked.connect(lambda :self.frame_menu.setVisible(False))
+        self.left_menu.addWidget(closeMenuBtn)
         self.frame_menu.move(self.menuButton.x(),self.menuButton.y())
         self.tree = QTreeWidget()
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -190,6 +242,9 @@ class Notes(QWidget):
         self.left_menu.addWidget(self.tree)
         self.left_menu.addStretch()
         self.frame_menu.setLayout(self.left_menu)
+        d = QAction()
+        d.triggered.connect(lambda :self.frame_menu.setVisible(False))
+        self.frame_menu.addAction(d)
         #self.mainLayout.addWidget(self.frame_menu)
 
         # Активная на данный момент заметка
@@ -217,38 +272,21 @@ class Notes(QWidget):
 "border-radius:10px;\n")
         self.mainTextEdit.setDocument(doc)
         self.mainTextEdit.setFocus()  # устанавливает курсор в текстовое поле
+        print(self.mainTextEdit.x())
 
         # Arrow
         self.homeButton = MyPushButton('Main Note')
         self.buttonLayout.addWidget(self.homeButton)
         self.homeButton.leftClick.connect(lambda: self.show_main_note_text())
         self.homeButton.leftClick.connect(lambda: self.change_open_note('MainNote', -1))
+        self.homeButton.setShortcut("Ctrl+W")
 
         # Plus
         self.plusButton = MyPushButton('Plus')
         self.buttonLayout.addWidget(self.plusButton)
         self.plusButton.leftClick.connect(lambda: self.new_note())
         self.plusButton.setShortcut("Ctrl+N")
-
-
-        # Меню для кнопки-скрепки
-        contextMenuForButton = QMenu()
-
-        addImage = QAction('Image', self)
-        addImage.triggered.connect(lambda: self.add_img())
-        addAudio = QAction('Audio', self)
-        addAudio.triggered.connect(lambda: self.add_audio())
-
-        contextMenuForButton.addAction(addImage)
-        contextMenuForButton.addAction(addAudio)
-        contextMenuForButton.addSeparator()
-
-        contextMenuForButton.customContextMenuRequested.connect(lambda: self.show_context_menu())
-
-        # Screpka
-        self.clipButton = MyPushButton('Screpka')
-        self.clipButton.setMenu(contextMenuForButton)
-        self.buttonLayout.addWidget(self.clipButton)
+        self.plusButton.setStyleSheet('border-image: url("PlusButton.png")')
 
         self.ZLay.addLayout(self.buttonLayout)
         #self.scrollAr.addScrollBarWidget(self.ZLay)
@@ -291,7 +329,7 @@ class Notes(QWidget):
 
         mainGroupBox = QGroupBox()
         mainGroupBox.setGeometry(QRect(300, 160, 261, 251))
-        mainGroupBox.setMaximumSize(QSize(300, 200))
+        mainGroupBox.setMaximumSize(QSize(200, 200))
 
         mainGroupBox.setStyleSheet("border-radius: 10px;\n"
                                    "background-color: rgb(83,90,87);\n"
@@ -303,7 +341,7 @@ class Notes(QWidget):
         topGroupBox.setStyleSheet("background-color: rgb(0, 0, 0);\n"
                                   "font: 87 9pt \"Arial Black\";\n"
                                   "color: white;")
-        topGroupBox.setMaximumSize(QSize(300, 200))
+        topGroupBox.setMaximumSize(QSize(200, 200))
 
         topLayout = QHBoxLayout(topGroupBox)
         labelName = QLabel(topGroupBox)
@@ -332,8 +370,8 @@ class Notes(QWidget):
         mainLayout.addWidget(topGroupBox)
 
         noteTextEdit = QTextEdit(mainGroupBox)
-        noteTextEdit.setMinimumSize(QSize(100, 150))
-        noteTextEdit.setMaximumSize(QSize(250, 200))
+        #noteTextEdit.setMinimumSize(QSize(100, 150))
+        noteTextEdit.setMaximumSize(QSize(200, 200))
         noteTextEdit.setStyleSheet(
             "background-color: rgb(230,216,203); border-style: outset; font:12pt 'sans-serif'; color: black;")
 
@@ -417,10 +455,10 @@ class Notes(QWidget):
         else:
             self.clear_layout(self.widgetLay)
             self.show_note_text()
+
         self.create_all_img_button()
         self.create_all_audio_player()
         self.change_buttons()
-
 
     def change_buttons(self):
         if self.open_note_index == -1:
@@ -528,7 +566,7 @@ class Notes(QWidget):
 
         mainGroupBox = QGroupBox()
         mainGroupBox.setGeometry(QRect(300, 160, 261, 251))
-        mainGroupBox.setMaximumSize(QSize(300, 200))
+        mainGroupBox.setMaximumSize(QSize(200, 200))
 
         mainGroupBox.setStyleSheet("border-radius: 10px;\n"
                                    "background-color: rgb(83,90,87);\n"
@@ -540,7 +578,7 @@ class Notes(QWidget):
         topGroupBox.setStyleSheet("background-color: rgb(0, 0, 0);\n"
                                   "font: 87 9pt \"Arial Black\";\n"
                                   "color: white;")
-        topGroupBox.setMaximumSize(QSize(300, 200))
+        topGroupBox.setMaximumSize(QSize(200, 200))
 
         topLayout = QHBoxLayout(topGroupBox)
         labelName = QLabel(topGroupBox)
@@ -569,8 +607,8 @@ class Notes(QWidget):
         mainLayout.addWidget(topGroupBox)
 
         noteTextEdit = QTextEdit(mainGroupBox)
-        noteTextEdit.setMinimumSize(QSize(100, 150))
-        noteTextEdit.setMaximumSize(QSize(250, 200))
+        noteTextEdit.setMinimumSize(QSize(70, 120))
+        noteTextEdit.setMaximumSize(QSize(200, 200))
         noteTextEdit.setStyleSheet(
             "background-color: rgb(230,216,203); border-style: outset; font:12pt 'sans-serif'; color: black;")
 
@@ -580,7 +618,6 @@ class Notes(QWidget):
             "p, li { white-space: pre-wrap; }\n"
             "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:7.8pt; font-weight:400; font-style:normal;\">\n"
             "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Note\'s name...</p></body></html>")
-
         noteTextEdit.setReadOnly(True)
         noteTextEdit.viewport().setCursor(Qt.ArrowCursor)
         noteText = ""
@@ -842,12 +879,11 @@ class Notes(QWidget):
             errorMessage.exec_()
             return
         img_button = MyPushButton("")
-        img_button.rightClick.connect(lambda: self.img_context_menu(img_button, self.open_note_index, fileName))
         img_button.leftClick.connect(lambda: self.openImage(fileName))
         img_button.setGeometry(QRect(100, 100, 100, 100))
         img_button.setIcon(QIcon(fileName))
         img_button.setIconSize(QSize(img_button.width(), img_button.height()))
-
+        img_button.rightClick.connect(lambda: self.img_context_menu(img_button, self.open_note_index, fileName))
 
         self.widgetLay.addWidget(img_button)
 
@@ -870,11 +906,9 @@ class Notes(QWidget):
             json.dump(note_dict_copy, f)
 
     def img_context_menu(self, img_button, index, img_path): # СОЗДАЕТ КОНТЕКСТНОЕ МЕНЮ
-        img_button.setContextMenuPolicy(Qt.CustomContextMenu)
         img_menu = QMenu()
 
-        removeAct = QWidgetAction(img_button)
-        removeAct.setText("Delete")
+        removeAct = QAction('Delete')
         removeAct.triggered.connect(lambda: self.image_delete(index, img_button, img_path))
         img_menu.addAction(removeAct)
 
@@ -884,7 +918,6 @@ class Notes(QWidget):
     def show_context_menu(self, menu): # ОТОБРАЖАЕТ КОНТЕКСТНОЕ МЕНЮ
         # Показываем меню и выбираем ему место
         menu.exec_(QCursor.pos())
-
 
     def image_delete(self, index, img_button, img_path):
         i = 0
@@ -896,6 +929,7 @@ class Notes(QWidget):
 
     def openImage(self, fileName_):
         from ctypes import windll
+        print(fileName_)
         self.openImgFrame = QFrame()
         self.openImgFrame.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         screenSize1 = windll.user32.GetSystemMetrics(0)
@@ -923,8 +957,8 @@ class Notes(QWidget):
                 img_button.setGeometry(QRect(100, 100, 100, 100))
                 img_button.setIcon(QIcon(img))
                 img_button.setIconSize(QSize(img_button.width(), img_button.height()))
+                img_button.clicked.connect(lambda: self.openImage(img))
                 img_button.rightClick.connect(lambda: self.img_context_menu(img_button, self.open_note_index, img))
-                img_button.leftClick.connect(lambda: self.openImage(img))
                 self.widgetLay.addWidget(img_button)
 
 
@@ -1003,7 +1037,6 @@ class Notes(QWidget):
         textW.acceptRichText(True)
 
         textW.toHTML("<h1><font></font></h1>")
-
 
     # def save_all_json(self): # ТЕСТОВАЯ ФУНКЦИЯ СОХРАНЕНИЯ JSON ПРИ ЗАКРЫТИИ ПРИЛОЖЕНИЯ
     #     for dict in self.notes_dict_list:
