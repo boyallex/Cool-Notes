@@ -156,7 +156,7 @@ class Notes(QWidget):
     def initUI(self):
 
         self.setWindowTitle('Note')
-        self.setGeometry(300, 200, 750, 500)
+        self.setGeometry(300, 200, 750, 600)
 
         # Zero Layer
         self.ZLay = QVBoxLayout()
@@ -298,23 +298,24 @@ class Notes(QWidget):
         self.homeButton.leftClick.connect(lambda: self.show_main_note_text())
         self.homeButton.leftClick.connect(lambda: self.change_open_note('MainNote', -1))
         self.homeButton.setShortcut("Ctrl+W")
-        self.homeButton.setStyleSheet('border-image: url("HomeButton.png")')
+        self.homeButton.setStyleSheet('border-image: url("HomeButton.png"); border-radius: 40px 40px')
         self.homeButton.setMinimumWidth(55)
         self.homeButton.setMinimumHeight(50)
-        self.homeButton.setMaximumWidth(50)
-        self.homeButton.setMaximumHeight(45)
+        self.homeButton.setMaximumWidth(45)
+        self.homeButton.setMaximumHeight(40)
         self.homeButton.hide()
+
 
         # Plus
         self.plusButton = MyPushButton('')
         self.plusButton.setMinimumWidth(55)
         self.plusButton.setMinimumHeight(50)
-        self.plusButton.setMaximumWidth(50)
-        self.plusButton.setMaximumHeight(45)
+        self.plusButton.setMaximumWidth(45)
+        self.plusButton.setMaximumHeight(40)
         self.buttonLayout.addWidget(self.plusButton, 0, 10)
         self.plusButton.leftClick.connect(lambda: self.new_note())
         self.plusButton.setShortcut("Ctrl+N")
-        self.plusButton.setStyleSheet('border-image: url("PlusButton.png")')
+        self.plusButton.setStyleSheet('border-image: url("PlusButton.png");border-radius: 40px 40px')
         self.plusButton.move(self.x(), 0)
 
         self.ZLay.addLayout(self.buttonLayout)
