@@ -7,10 +7,13 @@ from PyQt5 import QtMultimedia
 
 
 class AudioPlayer(QWidget):
+    """
+    Created widget AudioPlayer
+    """
     def __init__(self, audio: str, file_, parent=None):
         QWidget.__init__(self, parent, flags=
         Qt.Window | Qt.MSWindowsFixedSizeDialogHint)
-        # создание плеера
+        # Player Creating
         self.audioPlayer = QtMultimedia.QMediaPlayer()
         self.audioPlayer.setVolume(100)
         self.audioPlayer.mediaStatusChanged.connect(self.initPlayer)
@@ -19,7 +22,7 @@ class AudioPlayer(QWidget):
         mainLayout = QVBoxLayout()
         mediaHbox = QHBoxLayout()
         toolLayout = QHBoxLayout()
-        # имя аудиозаписи
+        # Audio name
         audioName = QLineEdit(audio)
         toolLayout.addWidget(audioName)
         # tools
@@ -33,9 +36,11 @@ class AudioPlayer(QWidget):
         toolMenu.addAction(removeAct)
         toolButton.setMenu(toolMenu)
         # кнопка Play
-        self.btnPlay = QPushButton('Play')
+        self.btnPlay = QPushButton()
         self.btnPlay.clicked.connect(self.audioPlayer.play)
+        self.btnPlay.setStyleSheet('border-image: url("PlayButton.png")')
         self.btnPlay.setEnabled(False)
+        self.btnPlay.setMaximumWidth(14)
         mediaHbox.addWidget(self.btnPlay)
         # Timeline
         self.sldPosition = QSlider(Qt.Horizontal)
@@ -74,13 +79,13 @@ class AudioPlayer(QWidget):
         if state == QtMultimedia.QMediaPlayer.PlayingState:
             # при включенном аудио
             self.btnPlay.setEnabled(True)
-            self.btnPlay.setText('Pause')
+            self.btnPlay.setStyleSheet('border-image: url("PauseButton.png")')
             self.btnPlay.clicked.connect(self.audioPlayer.pause)
 
         elif state == QtMultimedia.QMediaPlayer.PausedState:
             # при выключенном
             self.btnPlay.setEnabled(True)
-            self.btnPlay.setText('Play')
+            self.btnPlay.setStyleSheet('border-image: url("PlayButton.png")')
             self.btnPlay.clicked.connect(self.audioPlayer.play)
 
 class MyPushButton(QPushButton):
@@ -127,17 +132,15 @@ class Notes(QWidget):
     def __init__(self):
         super(Notes, self).__init__()
 
-        # self.path = r"D:\PROGRAMMING\Notes_App\directory_for_notes"
-        self.path = os.getcwd() #определяет директорию с .py файлом
+        self.path = os.getcwd() # defines the directory with .py file
 
         if not os.path.exists(self.path + r"\MainNote.json"):
             self.create_main_file()
 
-        json_data = json.load(open(self.path + r'\MainNote.json', 'r+'))  # считываем данные с json файла
+        json_data = json.load(open(self.path + r'\MainNote.json', 'r+'))  # read JSON File data's
         jtopy = json.dumps(json_data)
-        self.main_dict = json.loads(jtopy)  # КЛАДЕМ ДАННЫЕ В СЛОВАРЬ ГЛАВНОЙ ЗАМЕТКИ
-
-        self.notes_dict_list = []  # СПИСОК С ЗАМЕТКАМИ
+        self.main_dict = json.loads(jtopy)  # Put data's in Main Note dict
+        self.notes_dict_list = []  # Dict with note's
         i = 1
         while os.path.exists(self.path + r"\Note" + str(i) + ".json"):
             json_data = json.load(open(self.path + r"\Note" + str(i) + ".json", 'r+'))
@@ -146,46 +149,50 @@ class Notes(QWidget):
             self.notes_dict_list.append(note_dict)
             i += 1
 
-        self.notes_count = len(self.notes_dict_list)  # КОЛИЧЕСТВО ЗАМЕТОК
+        self.notes_count = len(self.notes_dict_list)
 
         self.initUI()
 
     def initUI(self):
 
-        # Размеры
         self.setWindowTitle('Note')
         self.setGeometry(300, 200, 750, 500)
 
-        #Нулевой слой
+        # Zero Layer
         self.ZLay = QVBoxLayout()
         self.setLayout(self.ZLay)
-        # Шапка с основной информацией
+
+        # Heading with main inf
         hatBox = QGroupBox()
         hatBox.setStyleSheet("color: rgb(255, 255, 255);\n"
         "background-color: rgb(0, 0, 0);\n"
         "border-radius: 10px;")
-        self.hatLayout = QHBoxLayout()#hatBox)
+        self.hatLayout = QHBoxLayout()
         hatBox.setLayout(self.hatLayout)
 
         # Menu
         self.menuButton = MyPushButton("")
         self.menuButton.setStyleSheet('border-image: url("MenuButton.png")')
-        self.menuButton.setMaximumHeight(30)
-        self.menuButton.setMaximumWidth(30)
+        self.menuButton.setMaximumHeight(34)
+        self.menuButton.setMaximumWidth(34)
         self.menuButton.setMinimumHeight(20)
         self.menuButton.setMaximumWidth(20)
         self.menuButton.leftClick.connect(self.show_left_menu)
         self.hatLayout.addWidget(self.menuButton)
 
-        # Активная заметка
+        # Active note name
         self.note_name_lbl = QLabel("MainNote")
+        name_font = QFont()
+        name_font.setBold(True)
+        name_font.setItalic(True)
+        self.note_name_lbl.setFont(name_font)
         self.hatLayout.addWidget(self.note_name_lbl)
 
-        # Ее последнее изменение
-        self.date_lbl = QLabel("Last Edit: " + self.main_dict["date"])
+        # Note Last Changes
+        self.date_lbl = QLabel(self.main_dict["date"])
         self.hatLayout.addWidget(self.date_lbl)
 
-        # Меню для кнопки-скрепки
+        # Menu for Clip Button
         self.clipContextMenu = QMenu()
 
         addImage = QAction('Image', self)
@@ -197,19 +204,17 @@ class Notes(QWidget):
         self.clipContextMenu.addAction(addAudio)
         self.clipContextMenu.addSeparator()
 
-        #self.clipContextMenu.customContextMenuRequested.connect(lambda: self.show_context_menu())
-
-        # Screpka
+        # Clip Button
         self.clipButton = MyPushButton('')
         self.clipButton.setMenu(self.clipContextMenu)
         self.clipButton.setMaximumWidth(18)
-        #self.clipButton.setMinimumWidth()
         self.clipButton.setMinimumHeight(21)
         self.clipButton.setStyleSheet('border-image: url("ClipButton.png")')
         self.hatLayout.addWidget(self.clipButton)
 
         self.ZLay.addWidget(hatBox)
-        # Первый слой
+
+        # Scroll Area for text and widgets
         self.scrollArea = QScrollArea()
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
@@ -219,12 +224,11 @@ class Notes(QWidget):
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
         self.ZLay.addWidget(self.scrollArea)
 
+        # First Layer for text and widgets
         self.textFrame = QFrame()
-        print(QDesktopWidget.width(self))
         self.textFrame.setMinimumWidth(0.6*QDesktopWidget.width(self))
         self.widgetFrame = QFrame()
         self.widgetFrame.setMaximumWidth(0.4*QDesktopWidget.width(self))
-
         self.textFrame.setStyleSheet('border-radius:10px;')
 
         self.mainLayout.addWidget(self.textFrame)
@@ -233,8 +237,8 @@ class Notes(QWidget):
         self.textLayout = QVBoxLayout()
         self.textFrame.setLayout(self.textLayout)
 
+        # Layout for
         self.widgetLay = QVBoxLayout()
-
         self.widgetFrame.setLayout(self.widgetLay)
         self.widgetFrame.hide()
 
@@ -251,43 +255,28 @@ class Notes(QWidget):
 "background-color: rgb(230,216,203);\n"
 "color: black;")
 
-        # -----------------
-        # Кнопки
-        self.buttonLayout = QHBoxLayout()
-
-        # Левое меню
+        # Left Menu
         self.frame_menu = QFrame()
         self.frame_menu.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         self.left_menu = QVBoxLayout()
-        leftMLay = QHBoxLayout()
-        leftMLay.addSpacing(40)
-        closeMenuBtn = QPushButton()
-        closeMenuBtn.setStyleSheet('border-image: url("Cross.png")')
-        closeMenuBtn.setMaximumHeight(15)
-        closeMenuBtn.setMaximumWidth(15)
-        closeMenuBtn.clicked.connect(lambda :self.frame_menu.setVisible(False))
-        closeMenuBtn.setLayout(leftMLay)
-        self.left_menu.addLayout(leftMLay)
-        self.frame_menu.move(self.x() + 40,self.y() + 40)
+        self.frame_menu.move(self.x() + 38,self.y() + 71)
         self.tree = QTreeWidget()
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self.tree_context_menu)
         self.left_menu.addWidget(self.tree)
         self.left_menu.addStretch()
         self.frame_menu.setLayout(self.left_menu)
-        #self.mainLayout.addWidget(self.frame_menu)
 
-        # Активная на данный момент заметка
+        # Active Note
         self.open_note_sys_name = 'MainNote'
         self.open_note_index = -1
 
-        # Словарь для хранения заметок по хэштегам
+        # Dict for storage note
         self.reactive_hash_dict()
-
-        # Создание древовидного виджета для заметок по категориям
+        # Tree widget creating for Notes categories
         self.cycle_for_items()
 
-        # Начальный документ
+        # Initial Document
         doc = QTextDocument()
         doc.setPlainText(self.open_text(-1))
         doc.contentsChanged.connect(lambda: self.save_main_note_text())
@@ -295,41 +284,60 @@ class Notes(QWidget):
 "background-color: rgb(240,240,240);\n"
 "border-radius:10px;\n")
         self.mainTextEdit.setDocument(doc)
-        self.mainTextEdit.setFocus()  # устанавливает курсор в текстовое поле
+        self.mainTextEdit.setFocus()  # set Cursor in Text
 
-        # Arrow
-        self.homeButton = MyPushButton('Main Note')
-        self.buttonLayout.addWidget(self.homeButton)
+        # -----------------
+        # Buttons
+        self.buttonLayout = QGridLayout()
+        #elf.buttonLayout.addSpacing(2 * self.x())
+        #self.buttonLayout.addSpacerItem(QSpacerItem(self.x() + 100, 0))
+
+        #Home Button
+        self.homeButton = MyPushButton('')
+        self.buttonLayout.addWidget(self.homeButton, 0, 3)
         self.homeButton.leftClick.connect(lambda: self.show_main_note_text())
         self.homeButton.leftClick.connect(lambda: self.change_open_note('MainNote', -1))
         self.homeButton.setShortcut("Ctrl+W")
+        self.homeButton.setStyleSheet('border-image: url("HomeButton.png")')
+        self.homeButton.setMinimumWidth(55)
+        self.homeButton.setMinimumHeight(50)
+        self.homeButton.setMaximumWidth(50)
+        self.homeButton.setMaximumHeight(45)
+        self.homeButton.hide()
 
         # Plus
         self.plusButton = MyPushButton('')
-        self.plusButton.setMinimumWidth(60)
-        self.plusButton.setMinimumHeight(55)
-        self.plusButton.setMaximumWidth(60)
-        self.plusButton.setMaximumHeight(55)
-        self.buttonLayout.addWidget(self.plusButton)
+        self.plusButton.setMinimumWidth(55)
+        self.plusButton.setMinimumHeight(50)
+        self.plusButton.setMaximumWidth(50)
+        self.plusButton.setMaximumHeight(45)
+        self.buttonLayout.addWidget(self.plusButton, 0, 10)
         self.plusButton.leftClick.connect(lambda: self.new_note())
         self.plusButton.setShortcut("Ctrl+N")
         self.plusButton.setStyleSheet('border-image: url("PlusButton.png")')
+        self.plusButton.move(self.x(), 0)
 
         self.ZLay.addLayout(self.buttonLayout)
-        #self.scrollAr.addScrollBarWidget(self.ZLay)
 
-        # Запускаем цикл
+        # Creating notes
         self.change_open_note('MainNote', -1)
         self.cycle_all_notes()
 
     #todo-------------------------Functions for MainNote-------------------------
     def create_main_file(self):  # СОЗДАНИЕ ГЛАВНОЙ ЗАМЕТКИ
+        """
+        File and dict of Main Note creating
+        :return: JSON File with dict
+        """
         text = '{{"text": "", "date": "{}"}}'.format(self.note_date_func())
         with open(self.path + r'\MainNote.json', 'w+') as f:
             f.write(text)
 
     @pyqtSlot()
-    def show_main_note_text(self):  # ОТОБРАЖАЕТ ГЛАВНУЮ ЗАМЕТКУ
+    def show_main_note_text(self):
+        """
+        Represent Main note
+        """
         main_txtEdit = QTextDocument()
         main_txtEdit.setPlainText(self.open_text(-1))
         main_txtEdit.setDefaultStyleSheet("border-style: outset;\n"
@@ -344,12 +352,24 @@ class Notes(QWidget):
 
     #todo-------------------------Functions for launching notes-------------------------
     @pyqtSlot()
-    def cycle_all_notes(self):  # ПРОХОДИТСЯ ЦИКЛОМ ПО ВСЕМ ЗАМЕТКАМ
+    def cycle_all_notes(self):
+        """
+        Go through all notes
+        """
         for note in self.notes_dict_list:
             self.show_note_box(note["sys_name"], note["index"], note["user_name"], note["hashtags"])
 
     @pyqtSlot(str)
-    def show_note_box(self, sys_name, index, user_name, hashtags):  # ОТОБРАЖАЕТ И АКТИВИРУЕТ КНОПКУ
+    def show_note_box(self, sys_name, index, user_name, hashtags):
+        """
+        Create, save and represent note's widget
+
+        :param sys_name: str
+        :param index: int
+        :param user_name: str
+        :param hashtags: str
+        :return: note's widget
+        """
         print(self.notes_dict_list)
 
         memoLayout = QVBoxLayout()
@@ -398,7 +418,6 @@ class Notes(QWidget):
         mainLayout.addWidget(topGroupBox)
 
         noteTextEdit = QTextEdit(mainGroupBox)
-        #noteTextEdit.setMinimumSize(QSize(100, 150))
         noteTextEdit.setMaximumSize(QSize(200, 200))
         noteTextEdit.setStyleSheet(
             "background-color: rgb(230,216,203); border-style: outset; font:12pt 'sans-serif'; color: black;")
@@ -424,8 +443,24 @@ class Notes(QWidget):
         print(self.notes_dict_list)
 
     def active_note_menu(self, menu, tool_btn, index, note_layout, hashtag, sys_name, user_name):
-        """Очищает и заново запускает меню для заметки"""
+        """
+        Clear and recreate context menu for note
+
+        :param menu: QMenu
+        :param tool_btn: QToolButton
+        :param index: int
+        :param note_layout: QLayout
+        :param hashtag: str
+        :param sys_name: str
+        :param user_name: str
+        :return: created note context menu
+        """
         menu.clear()
+
+        openAction = QWidgetAction(tool_btn)
+        openAction.setText("Open")
+        openAction.triggered.connect(lambda: self.change_open_note(sys_name=sys_name, index=index))
+        menu.addAction(openAction)
 
         removeAction = QWidgetAction(tool_btn)
         removeAction.setText("Remove")
@@ -440,18 +475,18 @@ class Notes(QWidget):
             lambda: self.rename_note(sys_name, hashtag, index, user_name))
         menu.addAction(renameAction)
 
-        openAction = QWidgetAction(tool_btn)
-        openAction.setText("Open")
-        openAction.triggered.connect(lambda: self.change_open_note(sys_name=sys_name, index=index))
-        menu.addAction(openAction)
-
     @pyqtSlot(str)
-    def show_note_text(self):  # СОЗДАЕТ ТЕСТОВОЕ ПОЛЕ QTEXTDOCUMENT И АКТИВИРУЕТ СОХРАНЕНИЕ
+    def show_note_text(self):
+        """
+        Create QTextDocument and activate text saving
+        Add clip button in Heading
+        :return: QTextDocument
+        """
         note_doc = QTextDocument()
         highlighter = MyHighlighter(note_doc)
         note_doc.setHtml(self.open_text(self.open_note_index))
         self.mainTextEdit.setDocument(note_doc)
-        self.mainTextEdit.setFocus() # устанавливает курсор в текстовое поле
+        self.mainTextEdit.setFocus()
         self.date_lbl.setText(self.notes_dict_list[self.open_note_index]["date"])
         self.note_name_lbl.setText(self.notes_dict_list[self.open_note_index]["user_name"])
         note_doc.contentsChanged.connect(lambda: self.save_note_text(note_doc.toHtml()))
@@ -464,12 +499,21 @@ class Notes(QWidget):
         self.clipButton.setMenu(self.clipContextMenu)
 
     def change_note_textedit(self, index):
-        """Меняет текст на виджете подзаметки"""
+        """
+        Change note widget text
+        :param index:int
+        """
         noteText = self.open_text(index)
         self.notes_dict_list[index]["note_textedit"].setHtml(noteText)
 
     @pyqtSlot(str)
-    def change_open_note(self, sys_name, index):  # МЕНЯЕТ АКТИВНУЮ ЗАМЕТКУ
+    def change_open_note(self, sys_name, index):
+        """
+        Change active note and widget layout
+        :param sys_name: str
+        :param index: int
+        :return:
+        """
         self.open_note_sys_name = str(sys_name)
         self.open_note_index = index
 
@@ -480,35 +524,46 @@ class Notes(QWidget):
             self.show_note_text()
             self.create_all_img_button()
             self.create_all_audio_player()
+
         self.change_buttons()
 
-
     def change_buttons(self):
+
         if self.open_note_index == -1:
             self.widgetFrame.hide()
             self.noteFrame.show()
             self.clipButton.hide()
             self.plusButton.show()
+            self.homeButton.hide()
         else:
             self.noteFrame.hide()
             self.widgetFrame.show()
             self.clipButton.show()
             self.plusButton.hide()
+            self.homeButton.show()
+
 
     #todo-------------------------Fuctions for open and save text-------------------------
     @pyqtSlot(str)
-    def save_note_text(self, text):  # УНИВЕРСАЛЬНАЯ СОХРАНЯЛКА JSON ФАЙЛОВ
+    def save_note_text(self, text):
+        """
+        Saving and creating JSON File
+        :param text: str
+        :return: JSON File
+        """
         note_sys_name = self.open_note_sys_name
         index = self.open_note_index
         self.notes_dict_list[index]["text"] = text
         self.notes_dict_list[index]["date"] = self.note_date_func()
         note_dict_copy = self.notes_dict_list[index].copy()
+
         del note_dict_copy["note_layout"]
         del note_dict_copy["note_menu"]
         del note_dict_copy["note_tool_btn"]
         del note_dict_copy["note_textedit"]
         del note_dict_copy["note_label_name"]
         del note_dict_copy["note_label_hashtag"]
+
         if "images_btn" in note_dict_copy.keys():
             del note_dict_copy["images_btn"]
         with open(self.path + "\\" + note_sys_name + ".json", 'w') as f:
@@ -519,39 +574,44 @@ class Notes(QWidget):
         text = self.mainTextEdit.toPlainText()
         self.main_dict["text"] = text
         self.main_dict["date"] = self.note_date_func()
+
         with open(self.path + "\\" + "MainNote.json", 'w') as f:
             json.dump(self.main_dict, f)
 
     @pyqtSlot(str)
-    def open_text(self, index):  # УНИВЕРСАЛЬНАЯ ОТКРЫВАЛКА JSON ФАЙЛОВ
+    def open_text(self, index):
+        """
+        For JSON Files opening
+        :param index: int
+        """
         if index != -1:
             return self.notes_dict_list[index]["text"]
         else:
             return self.main_dict["text"]
 
     def search_hashtags(self, html_text):
+        """
+        For searching hashtag in users text
+        :param html_text: str
+        :return: hashtag str
+        """
         pattern = "@" + r"\w+" + "@"
         hashtags = findall(pattern, html_text)
         return hashtags
-
-    # def show_hashtag(self, html_text, hashtag):
-    #     html_text = html_text.replace(hashtag,
-    #                         '{span}{0}{endspan}'.format(
-    #                             hashtag, " ", span='<font color = "red">', endspan='</font>'
-    #                         ))
-    #     return html_text
 
     def save_note_hashtags(self, index):
         hashtags = self.search_hashtags(self.notes_dict_list[index]["text"])
         self.notes_dict_list[index]["hashtags"] = ["@noname@"] + hashtags
         self.notes_dict_list[index]["date"] = self.note_date_func()
         note_dict_copy = self.notes_dict_list[index].copy()
+
         del note_dict_copy["note_layout"]
         del note_dict_copy["note_menu"]
         del note_dict_copy["note_tool_btn"]
         del note_dict_copy["note_textedit"]
         del note_dict_copy["note_label_name"]
         del note_dict_copy["note_label_hashtag"]
+
         if "images_btn" in note_dict_copy.keys():
             del note_dict_copy["images_btn"]
         with open(self.path + "\\" + self.notes_dict_list[index]["sys_name"] + ".json", 'w') as f:
@@ -570,19 +630,11 @@ class Notes(QWidget):
             self.reactive_hash_dict()
             self.cycle_for_items()
 
-    # def clean_excess(self, html_text, hashtag, note_doc):
-    #     pattern = '<span color = "red">' + '@' + r'\w?' + '@' + '\s' + '\w+' + '</span>'
-    #     tag_with_excess = search(pattern, html_text)
-    #     if tag_with_excess:
-    #         pattern_hashtag = '@' + r'\w?' + '@'
-    #         excess = search(pattern_hashtag, tag_with_excess)
-    #         html_text = html_text.replace(tag_with_excess, '<font color = "red">' + hashtag + '</font>' + '<p>' + excess + '</p>')
-    #         note_doc.setHtml(html_text)
-
-
-
     #todo-------------------------Fuctions for plusButton-------------------------
-    def max_note_name_number(self): # ВОЗВРАЩАЕТ МАКИСМАЛЬНЫЙ НОМЕР NONAME ЗАМЕТОК
+    def max_note_name_number(self):
+        """
+        :return: NoName max number
+        """
         a = []
         for note in self.notes_dict_list:
             if note["user_name"][:6] == "NoName":
@@ -592,7 +644,11 @@ class Notes(QWidget):
         else:
             return 0
 
-    def input_note_name(self, text): # ввод названия заметки
+    def input_note_name(self, text):
+        """
+        :param text: str
+        :return: Note Name str
+        """
         name, ok = QInputDialog.getText(self, "Naming", "Enter name",
                                         text=text)
         note_user_name = None
@@ -604,23 +660,12 @@ class Notes(QWidget):
             return None
         return note_user_name
 
-    # def input_note_hashtag(self):
-    #     text, ok = QInputDialog.getText(self, "Hashtag", "Enter hashtag", text="#noname")
-    #     note_hashtag = None
-    #     if ok and text != "":
-    #         text = text.replace(" ", "")
-    #         text = text.lower()
-    #         if text[0] != "#":
-    #             text = "#" + text
-    #         note_hashtag = str(text)
-    #     elif ok and text == "":
-    #         note_hashtag = "#noname"
-    #     else:
-    #         return None
-    #     return  note_hashtag
-
     @pyqtSlot()
     def new_note(self):  # СОЗДАНИЕ НОВОЙ КНОПКИ ЗАМЕТКИ
+        """
+        New Note Button Creating
+        :return: Note Widget
+        """
         new_note_user_name = self.input_note_name("NoName" + str(self.max_note_name_number() + 1))
 
         if new_note_user_name == None:
@@ -696,7 +741,7 @@ class Notes(QWidget):
         memoLayout.addWidget(mainGroupBox)
         self.noteLayout.addLayout(memoLayout)
 
-        # Создание заметки в левой менюшке
+        # Creating note in Left Menu
         if not new_note_hashtag in self.hash_dict:
             new_root_item = QTreeWidgetItem()
             new_root_item.setText(0, new_note_hashtag)
@@ -712,7 +757,7 @@ class Notes(QWidget):
             self.tree.clear()
             self.cycle_for_items()
 
-        # добавляем в список новую заметку в виде словаря
+        # Add new note dict in list
         new_note_dict = {"user_name": new_note_user_name,
                          "sys_name": new_sys_name,
                          "text": "",
@@ -729,28 +774,35 @@ class Notes(QWidget):
         self.notes_dict_list.append(new_note_dict)
 
 
-        # сохраняем словарь в json файл
+        # save dict in JSON File
         text = '{{"user_name": "{}", "sys_name": "{}", "text": "", "index": {}, "date": "{}", "hashtags": ["{}"]}}'.format(
             new_note_user_name, new_sys_name, index, self.note_date_func(), new_note_hashtag)
 
         with open(self.path + r'\{}'.format(new_sys_name) + '.json', 'w+') as f:
             f.write(text)
 
-        # открываем и активируем заметку
+        # open and activate note
         self.change_open_note(new_sys_name, index)
 
-        print(self.notes_dict_list)
 
     #todo-------------------------Functions for context menu-------------------------
 
     @pyqtSlot(str, "QPushButton", int)
     def rename_note(self, sys_name, note_hashtag, index, user_name): # ПЕРЕИМЕНОВАНИЕ ЗАМЕТКИ
-        # пользователь вводит новое название заметки
+        """
+        Note Rename
+        :param sys_name: str
+        :param note_hashtag: str
+        :param index: int
+        :param user_name: str
+        :return:
+        """
+        # user can input new note name
         new_user_name = self.input_note_name(text = user_name)
         if new_user_name == None:
             return
 
-        # переименовываем заметки в левом меню
+        # Rename note in left menu
         for i in range(len(self.hash_dict[note_hashtag])):
             if self.hash_dict[note_hashtag][i]["user_name"] == self.notes_dict_list[index]["user_name"]:
                 self.hash_dict[note_hashtag][i]["user_name"] = new_user_name
@@ -758,7 +810,7 @@ class Notes(QWidget):
         self.cycle_for_items()
 
         self.notes_dict_list[index]["note_label_name"].setText(new_user_name)
-        # меняем название в словаре
+        # change name in dict
         self.notes_dict_list[index]["user_name"] = new_user_name
         note_dict_copy = self.notes_dict_list[index].copy()
         del note_dict_copy["note_layout"]
@@ -769,59 +821,66 @@ class Notes(QWidget):
         del note_dict_copy["note_label_hashtag"]
         if "images_btn" in note_dict_copy.keys():
             del note_dict_copy["images_btn"]
-        # меняем название в json файле
+        # cange File name
         with open(self.path + "\\" + sys_name + ".json", 'w') as f:
             json.dump(note_dict_copy, f)
 
-        # self.note_name_lbl.setText(note_name)
-        # self.show_note_text(sys_name, index)  # открываем заметку
-        self.notes_dict_list[index]["date"] = self.note_date_func()  # устанавливаем время изменения заметки
+        self.notes_dict_list[index]["date"] = self.note_date_func()  # put changing time
 
     @pyqtSlot("QPushButton", int, str)
     def note_del(self, note_layout, index, note_hashtag, sys_name, user_name): # УДАЛЯЕТ ПОДЗАМЕТКУ
+        """
+        Function for note widget deleting
+        :param note_layout: QLayout
+        :param index: int
+        :param note_hashtag: str
+        :param sys_name: str
+        :param user_name:str
+        """
         from shutil import move
-        print("delete:", note_layout, index, note_hashtag, sys_name, user_name)
 
-        # удаляем заметку из левого меню
+        # Delete from Left Menu
         for note in self.hash_dict[note_hashtag]:
             if note["user_name"] == self.notes_dict_list[index]["user_name"]:
                 self.hash_dict[note_hashtag].remove(note)
 
-        self.notes_dict_list.pop(index)  # удаляем заметку заметку из списка
-        self.notes_count = self.notes_count - 1  # уменьшаем кол-во заметок
+        self.notes_dict_list.pop(index)  # delete from list
+        self.notes_count = self.notes_count - 1
 
-        if self.hash_dict[note_hashtag] == []: # если в хэштэге больше нет заметок, то удаляем хэштег
+        if self.hash_dict[note_hashtag] == []:
             del self.hash_dict[note_hashtag]
 
-        self.tree.clear() # удаляем заметки из меню
-        self.cycle_for_items() # заново добавляем заметки в меню
+        self.tree.clear() # delete from menu
+        self.cycle_for_items() # put notes in menu again
 
-        # удаляем виджет кнопки и json
+        # File and widget deleting
         self.clear_layout(note_layout)
         note_layout.deleteLater()
 
         os.remove(self.path + r"\{}".format(sys_name) + ".json")
 
-        # открываем главную заметку
+        # Open Main Note
         self.change_open_note("MainNote", -1)
 
-        # переименуем файлы json (-1)
+        # Rename JSON Files
         i = index + 2
         while os.path.exists(self.path + r"\Note" + str(i) + ".json"):
             move(self.path + r"\Note" + str(i) + ".json", self.path + r"\Note" + str(i - 1) + ".json")
             i += 1
 
-        # перенумеруем заметки в списке (-1)
+        # Rename Notes in list
         for note_dict in self.notes_dict_list[index:]:
             note_dict["index"] = note_dict["index"] - 1
             note_dict["sys_name"] = note_dict["sys_name"][:4] + str(note_dict["index"]+ 1)
             note_dict_copy = note_dict.copy()
+
             del note_dict_copy["note_layout"]
             del note_dict_copy["note_menu"]
             del note_dict_copy["note_tool_btn"]
             del note_dict_copy["note_textedit"]
             del note_dict_copy["note_label_name"]
             del note_dict_copy["note_label_hashtag"]
+
             if "images_btn" in note_dict_copy.keys():
                 del note_dict_copy["images_btn"]
             with open(self.path + r"\{}".format(sys_name) + ".json", 'w+') as f:
@@ -829,12 +888,10 @@ class Notes(QWidget):
 
         self.after_delete_cycle_for_notes(index)
 
-        print(self.notes_dict_list)
-
     def clear_layout(self, layout):
-        # for widget in reversed(range(layout.count())): #очищает все виджеты с лэйаута
-        #     layout.itemAt(widget).widget().setParent(None)
-        # layout.deleteLater()
+        """
+        :param layout: QLayout
+        """
 
         if layout != None:
             while layout.count():
@@ -883,7 +940,7 @@ class Notes(QWidget):
                 if note["hashtags"][len(note["hashtags"]) - 1] == key:
                     self.hash_dict[key].append({"user_name": note["user_name"], "note_item": ""})
 
-    def double_click_on_item(self, item): # ОТКРЫВАЕТ ЗАМЕТКУ ПРИ ДВОЙНОМ КЛИКЕ В ЛЕВОЙ МЕНЮХЕ
+    def double_click_on_item(self, item): # Open note with double click left menu
         name = item.text(0)
         for note in self.notes_dict_list:
             if note["user_name"] == str(name) :
@@ -921,17 +978,17 @@ class Notes(QWidget):
             self.tree_menu.exec_(self.tree.viewport().mapToGlobal(position))
 
     @pyqtSlot()
-    def show_tree_context_menu(self):  # ОТОБРАЖАЕТ КОНТЕКСТНОЕ МЕНЮ
-        # Показываем меню и выбираем ему место
+    def show_tree_context_menu(self):  # Represent context menu
         self.tree_menu.exec_(QCursor.pos())
 
     def show_left_menu(self):
+
         if self.frame_menu.isVisible() == True:
             self.frame_menu.setVisible(False)
-            self.frame_menu.move(self.x() + 45, self.y() + 50)
+            self.frame_menu.move(self.x() + 38, self.y() + 71)
         else:
             self.frame_menu.setVisible(True)
-            self.frame_menu.move(self.x() + 50, self.y() + 50)
+            self.frame_menu.move(self.x() + 38, self.y() + 71)
 
 
     #todo-------------------------Functions for image-------------------------
