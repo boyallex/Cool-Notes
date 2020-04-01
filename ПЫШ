@@ -1,4 +1,4 @@
-from re import findall, search
+from re import findall
 import sys, os, json
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -112,12 +112,17 @@ class MyHighlighter(QSyntaxHighlighter):
         super(MyHighlighter, self).__init__(parent)
 
         hashtagFormat = QTextCharFormat()
-        hashtagFormat.setForeground(Qt.darkBlue)
-        hashtagFormat.setFontWeight(QFont.Bold)
+        hashtagFormat.setForeground(Qt.blue)
 
-        pattern = "@" + r"\w+" + "@"
+        titleFormat = QTextCharFormat()
+        titleFormat.setFontWeight(QFont.Bold)
+        titleFormat.setFontPointSize(11)
 
-        self.highlightingRules = [(QRegExp(pattern), hashtagFormat)]
+        hashtag_pattern = "@" + r"\w+" + "@"
+        title_pattern = r"//" + r".+" + r"//"
+
+        self.highlightingRules = [(QRegExp(hashtag_pattern), hashtagFormat),
+                                  (QRegExp(title_pattern), titleFormat)]
 
     def highlightBlock(self, text):
         for pattern, format in self.highlightingRules:
@@ -127,6 +132,7 @@ class MyHighlighter(QSyntaxHighlighter):
                 len = expression.matchedLength()
                 self.setFormat(index, len, format)
                 index = expression.indexIn(text, index + len)
+
 
 class Notes(QWidget):
     def __init__(self):
@@ -226,6 +232,7 @@ class Notes(QWidget):
 
         # First Layer for text and widgets
         self.textFrame = QFrame()
+        self.textFrame.setToolTip("Any Special Symbols:\n@<your_text>@ - Hashtag\n//<your_text>// - Title")
         self.textFrame.setMinimumWidth(0.6*QDesktopWidget.width(self))
         self.widgetFrame = QFrame()
         self.widgetFrame.setMaximumWidth(0.4*QDesktopWidget.width(self))
@@ -426,7 +433,10 @@ class Notes(QWidget):
         noteTextEdit.setReadOnly(True)
         noteTextEdit.viewport().setCursor(Qt.ArrowCursor)
         noteText = self.open_text(index)
-        noteTextEdit.setHtml(noteText)
+        if len(noteText) > 44:
+            noteTextEdit.setText(noteText[:30] + "...")
+        else:
+            noteTextEdit.setText(noteText[:30])
 
         mainLayout.addWidget(noteTextEdit)
 
@@ -454,7 +464,7 @@ class Notes(QWidget):
         :param hashtag: str
         :param sys_name: str
         :param user_name: str
-        :return: created note context menu
+        :return: None
         """
         menu.clear()
 
@@ -485,19 +495,13 @@ class Notes(QWidget):
         """
         note_doc = QTextDocument()
         highlighter = MyHighlighter(note_doc)
-        note_doc.setHtml(self.open_text(self.open_note_index))
+        note_doc.setPlainText(self.open_text(self.open_note_index))
         self.mainTextEdit.setDocument(note_doc)
         self.mainTextEdit.setFocus()
         self.date_lbl.setText(self.notes_dict_list[self.open_note_index]["date"])
         self.note_name_lbl.setText(self.notes_dict_list[self.open_note_index]["user_name"])
-        note_doc.contentsChanged.connect(lambda: self.save_note_text(note_doc.toHtml()))
+        note_doc.contentsChanged.connect(lambda: self.save_note_text(self.open_note_index))
         note_doc.contentsChanged.connect(lambda: self.save_note_hashtags(self.open_note_index))
-
-        # Добавляем шрифты в clip
-        addTitle = QAction('Add Title')
-        addTitle.triggered.connect(lambda:self.add_title(note_doc))
-        self.clipContextMenu.addAction(addTitle)
-        self.clipButton.setMenu(self.clipContextMenu)
 
     def change_note_textedit(self, index):
         """
@@ -505,7 +509,10 @@ class Notes(QWidget):
         :param index:int
         """
         noteText = self.open_text(index)
-        self.notes_dict_list[index]["note_textedit"].setHtml(noteText)
+        if len(noteText) > 30:
+            self.notes_dict_list[index]["note_textedit"].setText(noteText[:30] + "...")
+        else:
+            self.notes_dict_list[index]["note_textedit"].setText(noteText[:30])
 
     @pyqtSlot(str)
     def change_open_note(self, sys_name, index):
@@ -517,7 +524,6 @@ class Notes(QWidget):
         """
         self.open_note_sys_name = str(sys_name)
         self.open_note_index = index
-
         if self.open_note_index == -1:
             self.show_main_note_text()
         else:
@@ -525,11 +531,9 @@ class Notes(QWidget):
             self.show_note_text()
             self.create_all_img_button()
             self.create_all_audio_player()
-
         self.change_buttons()
 
     def change_buttons(self):
-
         if self.open_note_index == -1:
             self.widgetFrame.hide()
             self.noteFrame.show()
@@ -546,14 +550,13 @@ class Notes(QWidget):
 
     #todo-------------------------Fuctions for open and save text-------------------------
     @pyqtSlot(str)
-    def save_note_text(self, text):
+    def save_note_text(self, index):
         """
         Saving and creating JSON File
-        :param text: str
-        :return: JSON File
+        :param index: int
         """
-        note_sys_name = self.open_note_sys_name
-        index = self.open_note_index
+        text = self.mainTextEdit.toPlainText()
+        note_sys_name = self.notes_dict_list[index]["sys_name"]
         self.notes_dict_list[index]["text"] = text
         self.notes_dict_list[index]["date"] = self.note_date_func()
         note_dict_copy = self.notes_dict_list[index].copy()
@@ -796,7 +799,7 @@ class Notes(QWidget):
         :param note_hashtag: str
         :param index: int
         :param user_name: str
-        :return:
+        :return: None
         """
         # user can input new note name
         new_user_name = self.input_note_name(text = user_name)
@@ -837,6 +840,7 @@ class Notes(QWidget):
         :param note_hashtag: str
         :param sys_name: str
         :param user_name:str
+        :return: None
         """
         from shutil import move
 
@@ -925,6 +929,7 @@ class Notes(QWidget):
             root_item.setText(0, key)
             for i in self.hash_dict[key]:
                 item = QTreeWidgetItem()
+                item.setToolTip(0, "Double Click - open note\nRight Click - context menu")
                 item.setText(0, i["user_name"])
                 root_item.addChild(item)
                 i["note_item"] = item
@@ -983,7 +988,6 @@ class Notes(QWidget):
         self.tree_menu.exec_(QCursor.pos())
 
     def show_left_menu(self):
-
         if self.frame_menu.isVisible() == True:
             self.frame_menu.setVisible(False)
             self.frame_menu.move(self.x() + 38, self.y() + 71)
@@ -1166,27 +1170,9 @@ class Notes(QWidget):
         # seconds = time_now[16:19]
         return time_now
 
-    def on_click(self):
-        pass
-
-    def add_title(self, textW):
-        #textW.acceptRichText(True)
-        text = textW.toPlainText()
-        print(textW.toHtml())
-
     def closeEvent(self, event):
         self.frame_menu.hide()
         event.accept()
-
-    # def save_all_json(self): # ТЕСТОВАЯ ФУНКЦИЯ СОХРАНЕНИЯ JSON ПРИ ЗАКРЫТИИ ПРИЛОЖЕНИЯ
-    #     for dict in self.notes_dict_list:
-    #         with open(self.path + "\\" + "Note" + str(dict["number"]) + ".json", 'w') as f:
-    #             json.dump(dict, f)
-    #     with open(self.path + "\\" + "MainNote" + ".json", 'w') as f:
-    #         json.dump(self.main_dict, f)
-    #
-    # def closeEvent(self, event):
-    #     self.save_all_json()
 
 def setup_thread_excepthook(): # ФУНКЦИЯ ДЛЯ ОБРАБОТКИ ВСЕХ ИСКЛЮЧЕНИЙ
     from threading import Thread
